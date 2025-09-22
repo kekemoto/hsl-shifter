@@ -2,6 +2,7 @@
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
     <title>HSL シフター</title>
     <style>
       body {
@@ -249,27 +250,30 @@
         render(h, s, l);
       }
 
-      [hueRange, hueNumber].forEach((el) =>
-        el.addEventListener("input", () => {
-          hueNumber.value = hueRange.value;
-          hueRange.value = hueNumber.value;
-          applyAdjustments();
-        }),
-      );
-      [satRange, satNumber].forEach((el) =>
-        el.addEventListener("input", () => {
-          satNumber.value = satRange.value;
-          satRange.value = satNumber.value;
-          applyAdjustments();
-        }),
-      );
-      [lightRange, lightNumber].forEach((el) =>
-        el.addEventListener("input", () => {
-          lightNumber.value = lightRange.value;
-          lightRange.value = lightNumber.value;
-          applyAdjustments();
-        }),
-      );
+      hueRange.addEventListener("input", () => {
+        hueNumber.value = hueRange.value;
+        applyAdjustments();
+      });
+      hueNumber.addEventListener("input", () => {
+        hueRange.value = hueNumber.value;
+        applyAdjustments();
+      });
+      satRange.addEventListener("input", () => {
+        satNumber.value = satRange.value;
+        applyAdjustments();
+      });
+      satNumber.addEventListener("input", () => {
+        satRange.value = satNumber.value;
+        applyAdjustments();
+      });
+      lightRange.addEventListener("input", () => {
+        lightNumber.value = lightRange.value;
+        applyAdjustments();
+      });
+      lightNumber.addEventListener("input", () => {
+        lightRange.value = lightNumber.value;
+        applyAdjustments();
+      });
     </script>
   </body>
 </html>
