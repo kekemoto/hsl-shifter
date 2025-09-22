@@ -9,18 +9,54 @@
         font-family: sans-serif;
         background: #111;
         color: #eee;
+        padding: 10px;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+      }
+      h1 {
+        font-size: 1.5em;
         text-align: center;
-        padding: 20px;
+        margin: 0.5em 0;
       }
       .controls {
-        margin: 20px 0;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        width: 100%;
+        max-width: 400px;
+      }
+      .control-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        width: 100%;
+      }
+      .label-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+      }
+      label {
+        font-weight: bold;
+        text-align: left;
+      }
+      .unit {
+        margin-left: 4px;
+        font-size: 0.9em;
+        color: #aaa;
+      }
+      input[type="range"] {
+        width: 100%;
       }
       .num {
-        width: 60px;
+        width: 80px;
       }
       canvas {
         border: 1px solid #444;
-        margin-top: 20px;
         max-width: 100%;
         height: auto;
       }
@@ -29,40 +65,66 @@
   <body>
     <h1>HSL シフター</h1>
 
-    <!-- コントロールUI（ファイル入力とH/S/Lスライダー） -->
+    <!-- コントロールUI -->
     <div class="controls">
-      画像を選択:
-      <input type="file" id="fileInput" accept="image/*" /><br /><br />
-      色相 (Hue):
-      <input type="range" id="hueRange" min="-180" max="180" value="0" />
-      <input
-        type="number"
-        id="hueNumber"
-        class="num"
-        min="-180"
-        max="180"
-        value="0"
-      />°<br /><br />
-      彩度 (Saturation):
-      <input type="range" id="satRange" min="-100" max="100" value="0" />
-      <input
-        type="number"
-        id="satNumber"
-        class="num"
-        min="-100"
-        max="100"
-        value="0"
-      />%<br /><br />
-      明度 (Lightness):
-      <input type="range" id="lightRange" min="-100" max="100" value="0" />
-      <input
-        type="number"
-        id="lightNumber"
-        class="num"
-        min="-100"
-        max="100"
-        value="0"
-      />%
+      <div class="control-group">
+        <label for="fileInput">画像を選択</label>
+        <input type="file" id="fileInput" accept="image/*" />
+      </div>
+
+      <div class="control-group">
+        <div class="label-row">
+          <label for="hueNumber">色相 (Hue)</label>
+          <div>
+            <input
+              type="number"
+              id="hueNumber"
+              class="num"
+              min="-180"
+              max="180"
+              value="0"
+            />
+            <span class="unit">°</span>
+          </div>
+        </div>
+        <input type="range" id="hueRange" min="-180" max="180" value="0" />
+      </div>
+
+      <div class="control-group">
+        <div class="label-row">
+          <label for="satNumber">彩度 (Saturation)</label>
+          <div>
+            <input
+              type="number"
+              id="satNumber"
+              class="num"
+              min="-100"
+              max="100"
+              value="0"
+            />
+            <span class="unit">%</span>
+          </div>
+        </div>
+        <input type="range" id="satRange" min="-100" max="100" value="0" />
+      </div>
+
+      <div class="control-group">
+        <div class="label-row">
+          <label for="lightNumber">明度 (Lightness)</label>
+          <div>
+            <input
+              type="number"
+              id="lightNumber"
+              class="num"
+              min="-100"
+              max="100"
+              value="0"
+            />
+            <span class="unit">%</span>
+          </div>
+        </div>
+        <input type="range" id="lightRange" min="-100" max="100" value="0" />
+      </div>
     </div>
 
     <!-- WebGL 用キャンバス -->
