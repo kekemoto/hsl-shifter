@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>HSL シフター</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        background: #111;
+        color: #eee;
+        text-align: center;
+        padding: 20px;
+      }
+      .controls {
+        margin: 20px 0;
+      }
+      .num {
+        width: 60px;
+      }
+      canvas {
+        border: 1px solid #444;
+        margin-top: 20px;
+        max-width: 100%;
+        height: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>HSL シフター</h1>
+
+    <!-- コントロールUI（ファイル入力とH/S/Lスライダー） -->
+    <div class="controls">
+      画像を選択:
+      <input type="file" id="fileInput" accept="image/*" /><br /><br />
+      色相 (Hue):
+      <input type="range" id="hueRange" min="-180" max="180" value="0" />
+      <input
+        type="number"
+        id="hueNumber"
+        class="num"
+        min="-180"
+        max="180"
+        value="0"
+      />°<br /><br />
+      彩度 (Saturation):
+      <input type="range" id="satRange" min="-100" max="100" value="0" />
+      <input
+        type="number"
+        id="satNumber"
+        class="num"
+        min="-100"
+        max="100"
+        value="0"
+      />%<br /><br />
+      明度 (Lightness):
+      <input type="range" id="lightRange" min="-100" max="100" value="0" />
+      <input
+        type="number"
+        id="lightNumber"
+        class="num"
+        min="-100"
+        max="100"
+        value="0"
+      />%
+    </div>
+
+    <!-- WebGL 用キャンバス -->
+    <canvas id="glcanvas"></canvas>
+
+    <!-- 頂点シェーダー -->
+    <script id="vertexShader" type="x-shader/x-vertex">
+      attribute vec2 a_position;
+      attribute vec2 a_texCoord;
+      varying vec2 v_texCoord;
+      void main(){
+        gl_Position = vec4(a_position,0.0,1.0);
+        v_texCoord = a_texCoord;
+      }
+    </script>
+
+    <!-- フラグメントシェーダー -->
+    <script id="fragmentShader" type="x-shader/x-fragment">
+      precision mediump float;
+      uniform sampler2D u_image;
+      uniform float u_hue;
+      uniform float u_sat;
+      uniform float u_light;
+      varying vec2 v_texCoord;
+
+      vec3 rgb2hsl(vec3 c){
+        float maxc=max(max(c.r,c.g),c.b);
+        float minc=min(min(c.r,c.g),c.b);
+        float l=(maxc+minc)*0.5;
+        float h=0.0; float s=0.0;
+        if(maxc!=minc){
+          float d=maxc-minc;
+          s=l>0.5? d/(2.0-maxc-minc): d/(maxc+minc);
+          if(maxc==c.r){ h=(c.g-c.b)/d+(c.g<c.b?6.0:0.0); }
+          else if(maxc==c.g){ h=(c.b-c.r)/d+2.0; }
+          else { h=(c.r-c.g)/d+4.0; }
+          h/=6.0;
+        }
+        return vec3(h,s,l);
+      }
+
+      float hue2rgb(float p,float q,float t){
+        if(t<0.0) t+=1.0;
+        if(t>1.0) t-=1.0;
+        if(t<1.0/6.0) return p+(q-p)*6.0*t;
+        if(t<1.0/2.0) return q;
+        if(t<2.0/3.0) return p+(q-p)*(2.0/3.0-t)*6.0;
+        return p;
+      }
+
+      vec3 hsl2rgb(vec3 c){
+        float h=c.x; float s=c.y; float l=c.z;
+        float r,g,b;
+        if(s==0.0){ r=g=b=l; }
+        else{
+          float q=l<0.5? l*(1.0+s): l+s-l*s;
+          float p=2.0*l-q;
+          r=hue2rgb(p,q,h+1.0/3.0);
+          g=hue2rgb(p,q,h);
+          b=hue2rgb(p,q,h-1.0/3.0);
+        }
+        return vec3(r,g,b);
+      }
+
+      void main(){
+        vec4 tex=texture2D(u_image,v_texCoord);
+        vec3 hsl=rgb2hsl(tex.rgb);
+        hsl.x=mod(hsl.x+u_hue/360.0,1.0);
+        hsl.y=clamp(hsl.y*(1.0+u_sat/100.0),0.0,1.0);
+        hsl.z=clamp(hsl.z*(1.0+u_light/100.0),0.0,1.0);
+        vec3 rgb=hsl2rgb(hsl);
+        gl_FragColor=vec4(rgb,tex.a);
+      }
+    </script>
+
+    <script>
+      const canvas = document.getElementById("glcanvas");
+      const gl = canvas.getContext("webgl");
+      let program, texture;
+
+      function createShader(gl, type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        return shader;
+      }
+
+      function createProgram(gl, vShader, fShader) {
+        const program = gl.createProgram();
+        gl.attachShader(program, vShader);
+        gl.attachShader(program, fShader);
+        gl.linkProgram(program);
+        return program;
+      }
+
+      const vsSource = document.getElementById("vertexShader").text;
+      const fsSource = document.getElementById("fragmentShader").text;
+      const vShader = createShader(gl, gl.VERTEX_SHADER, vsSource);
+      const fShader = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
+      program = createProgram(gl, vShader, fShader);
+      gl.useProgram(program);
+
+      const positionLoc = gl.getAttribLocation(program, "a_position");
+      const texCoordLoc = gl.getAttribLocation(program, "a_texCoord");
+
+      const buffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      const positions = new Float32Array([
+        -1, -1, 0, 0, 1, -1, 1, 0, -1, 1, 0, 1, 1, 1, 1, 1,
+      ]);
+      gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+
+      const FSIZE = positions.BYTES_PER_ELEMENT;
+      gl.enableVertexAttribArray(positionLoc);
+      gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, FSIZE * 4, 0);
+      gl.enableVertexAttribArray(texCoordLoc);
+      gl.vertexAttribPointer(
+        texCoordLoc,
+        2,
+        gl.FLOAT,
+        false,
+        FSIZE * 4,
+        FSIZE * 2,
+      );
+
+      const u_hue = gl.getUniformLocation(program, "u_hue");
+      const u_sat = gl.getUniformLocation(program, "u_sat");
+      const u_light = gl.getUniformLocation(program, "u_light");
+
+      function loadTexture(image) {
+        texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texImage2D(
+          gl.TEXTURE_2D,
+          0,
+          gl.RGBA,
+          gl.RGBA,
+          gl.UNSIGNED_BYTE,
+          image,
+        );
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      }
+
+      function render(h, s, l) {
+        gl.uniform1f(u_hue, h);
+        gl.uniform1f(u_sat, s);
+        gl.uniform1f(u_light, l);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      }
+
+      const fileInput = document.getElementById("fileInput");
+      const hueRange = document.getElementById("hueRange");
+      const hueNumber = document.getElementById("hueNumber");
+      const satRange = document.getElementById("satRange");
+      const satNumber = document.getElementById("satNumber");
+      const lightRange = document.getElementById("lightRange");
+      const lightNumber = document.getElementById("lightNumber");
+
+      let img = null;
+      fileInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const url = URL.createObjectURL(file);
+        img = new Image();
+        img.onload = () => {
+          canvas.width = img.width;
+          canvas.height = img.height;
+          gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+          loadTexture(img);
+          applyAdjustments();
+        };
+        img.src = url;
+      });
+
+      function applyAdjustments() {
+        if (!img) return;
+        const h = Number(hueRange.value);
+        const s = Number(satRange.value);
+        const l = Number(lightRange.value);
+        render(h, s, l);
+      }
+
+      [hueRange, hueNumber].forEach((el) =>
+        el.addEventListener("input", () => {
+          hueNumber.value = hueRange.value;
+          hueRange.value = hueNumber.value;
+          applyAdjustments();
+        }),
+      );
+      [satRange, satNumber].forEach((el) =>
+        el.addEventListener("input", () => {
+          satNumber.value = satRange.value;
+          satRange.value = satNumber.value;
+          applyAdjustments();
+        }),
+      );
+      [lightRange, lightNumber].forEach((el) =>
+        el.addEventListener("input", () => {
+          lightNumber.value = lightRange.value;
+          lightRange.value = lightNumber.value;
+          applyAdjustments();
+        }),
+      );
+    </script>
+  </body>
+</html>
